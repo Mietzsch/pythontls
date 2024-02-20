@@ -5,11 +5,16 @@ from enum import IntEnum
 
 class CipherSuites(IntEnum):
     TLS_AES_128_GCM_SHA256 = 0x1301,
-    TLS_AES_256_GCM_SHA384 = 0x1302
+    TLS_AES_256_GCM_SHA384 = 0x1302,
+    TLS_CHACHA20_POLY1305_SHA256 = 0x1303
 
 
 class NamedGroup(IntEnum):
-    X25519 = 0x001D
+    SECP256R1 = 0x0017,
+    SECP384R1 = 0x0018,
+    SECP521R1 = 0x0019,
+    X25519 = 0x001D,
+    X448 = 0x001E
 
 
 class ProtocolVersion(IntEnum):
