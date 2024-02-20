@@ -52,20 +52,36 @@ def create_default_cipher_suites() -> [tls1_3.tls_constants.CipherSuites]:
     return [tls1_3.tls_constants.CipherSuites.TLS_AES_256_GCM_SHA384, tls1_3.tls_constants.CipherSuites.TLS_AES_128_GCM_SHA256]
 
 
-def create_default_extensions() -> [tls1_3.tls_extensions.extension_message]:
+def create_default_extensions(state: tls1_3.tls_state.tls_state) -> [tls1_3.tls_extensions.extension_message]:
     supported_versions = tls1_3.tls_extensions.SupportedVersionsExtension(
         [tls1_3.tls_constants.ProtocolVersion.TLS_1_3])
     out = [tls1_3.tls_extensions.extension_message(
         tls1_3.tls_extensions.Extension.SUPPORTED_VERSIONS, supported_versions.serialize())]
+
+    supported_algos = tls1_3.tls_extensions.SignatureAlgorithmsExtension(
+        [tls1_3.tls_constants.SignatureScheme.ECDSA_SECP384R1_SHA384]
+    )
+    out.append(tls1_3.tls_extensions.extension_message(
+        tls1_3.tls_extensions.Extension.SIGNATURE_ALOGRITHMS, supported_algos.serialize()))
+
+    groups = [tls1_3.tls_constants.NamedGroup.X25519]
+
+    supported_groups = tls1_3.tls_extensions.SupportedGroupsExtension(groups)
+    out.append(tls1_3.tls_extensions.extension_message(
+        tls1_3.tls_extensions.Extension.SUPPORTED_GROUPS, supported_groups.serialize()))
+
+    key_share = tls1_3.tls_extensions.KeyShareExtension(groups, state)
+    out.append(tls1_3.tls_extensions.extension_message(
+        tls1_3.tls_extensions.Extension.KEY_SHARE, key_share.serialize()))
 
     return out
 
 
 def send_client_hello(sock: socket.socket, state):
     client_hello_obj = client_hello(
-        create_default_cipher_suites(), create_default_extensions())
+        create_default_cipher_suites(), create_default_extensions(state))
     handshake_message = tls1_3.tls_handshake.HandshakeMessage(tls1_3.tls_handshake.HandshakeType.CLIENT_HELLO, client_hello_obj.serialize()
                                                               )
     serialized = handshake_message.serialize_as_plaintext_record(
-        tls1_3.tls_handshake.ContentType.HANDSHAKE, tls1_3.tls_constants.ProtocolVersion.TLS_1_0)
+        tls1_3.tls_handshake.ContentType.HANDSHAKE, tls1_3.tls_constants.ProtocolVersion.TLS_1_2)
     sock.sendall(serialized)
