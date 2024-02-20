@@ -32,9 +32,9 @@ class extension_message:
 
 
 class SupportedVersionsExtension:
-    supported_versions: [tls1_3.tls_constants.ProtocolVersion]
+    supported_versions: list[tls1_3.tls_constants.ProtocolVersion]
 
-    def __init__(self, versions: [tls1_3.tls_constants.ProtocolVersion]):
+    def __init__(self, versions: list[tls1_3.tls_constants.ProtocolVersion]):
         self.supported_versions = versions
 
     def serialize(self) -> bytes:
@@ -46,9 +46,9 @@ class SupportedVersionsExtension:
 
 
 class SignatureAlgorithmsExtension:
-    supported_algos: [tls1_3.tls_constants.SignatureScheme]
+    supported_algos: list[tls1_3.tls_constants.SignatureScheme]
 
-    def __init__(self, algos: [tls1_3.tls_constants.SignatureScheme]):
+    def __init__(self, algos: list[tls1_3.tls_constants.SignatureScheme]):
         self.supported_algos = algos
 
     def serialize(self) -> bytes:
@@ -62,7 +62,7 @@ class SignatureAlgorithmsExtension:
 class SupportedGroupsExtension:
     supported_groups = [tls1_3.tls_constants.NamedGroup]
 
-    def __init__(self, groups: [tls1_3.tls_constants.NamedGroup]):
+    def __init__(self, groups: list[tls1_3.tls_constants.NamedGroup]):
         self.supported_groups = groups
 
     def serialize(self) -> bytes:
@@ -76,7 +76,7 @@ class SupportedGroupsExtension:
 class KeyShareExtension:
     key_shares: dict
 
-    def __init__(self, groups: [tls1_3.tls_constants.NamedGroup], state: tls1_3.tls_state.tls_state):
+    def __init__(self, groups: list[tls1_3.tls_constants.NamedGroup], state: tls1_3.tls_state.tls_state):
         self.key_shares = dict()
         for group in groups:
             self.key_shares[group] = tls1_3.tls_crypto.generate_key_share(
