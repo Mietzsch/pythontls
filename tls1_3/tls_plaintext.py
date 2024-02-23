@@ -27,10 +27,23 @@ class TLSPlaintext:
     protocol_version: tls1_3.tls_constants.ProtocolVersion
     message: bytes
 
-    def __init__(self, message: TLSPlaintextMessage, protocol_version=tls1_3.tls_constants.ProtocolVersion.TLS_1_2):
-        self.content_type = message.getType()
+    def __init__(self, content_type, protocol_version, message):
+        self.content_type = content_type
         self.protocol_version = protocol_version
-        self.message = message.serialize()
+        self.message = message
+
+    @classmethod
+    def fromTLSPlaintext(cls, message: TLSPlaintextMessage, protocol_version=tls1_3.tls_constants.ProtocolVersion.TLS_1_2):
+        return cls(message.getType(), protocol_version, message.serialize())
+
+    @classmethod
+    def fromSerializedMessage(cls, serialized_message: bytes):
+        content_type = tls1_3.tls_plaintext.ContentType.from_bytes(
+            serialized_message[0:1], 'big')
+        protocol_version = tls1_3.tls_constants.ProtocolVersion.from_bytes(
+            serialized_message[1:3], 'big')
+        message = serialized_message[5:]
+        return cls(content_type, protocol_version, message)
 
     def serialize(self) -> bytes:
         out = int(self.content_type.value).to_bytes(1, 'big')

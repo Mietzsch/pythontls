@@ -33,9 +33,20 @@ class Handshake(tls1_3.tls_plaintext.TLSPlaintextMessage):
     type: HandshakeCode
     msg: bytes
 
-    def __init__(self, message: HandshakeMessage):
-        self.type = message.getType()
-        self.msg = message.serialize()
+    def __init__(self, type, message):
+        self.type = type
+        self.msg = message
+
+    @classmethod
+    def fromHandshakeMessage(cls, message: HandshakeMessage):
+        return cls(message.getType(), message.serialize())
+
+    @classmethod
+    def fromSerializedMessage(cls, serialized_message: bytes):
+        type = HandshakeCode.from_bytes(
+            serialized_message[0:1], 'big')
+        message = serialized_message[4:]
+        return cls(type, message)
 
     def getType(self) -> tls1_3.tls_plaintext.ContentType:
         return tls1_3.tls_plaintext.ContentType.HANDSHAKE
