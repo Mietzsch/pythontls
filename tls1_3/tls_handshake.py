@@ -45,7 +45,8 @@ class Handshake(tls1_3.tls_plaintext.TLSPlaintextMessage):
     def fromSerializedMessage(cls, serialized_message: bytes):
         type = HandshakeCode.from_bytes(
             serialized_message[0:1], 'big')
-        message = serialized_message[4:]
+        message_len = int.from_bytes(serialized_message[1:4], 'big')
+        message = serialized_message[4:4+message_len]
         return cls(type, message)
 
     def getType(self) -> tls1_3.tls_plaintext.ContentType:

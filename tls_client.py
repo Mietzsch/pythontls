@@ -22,7 +22,7 @@ def receive_message(socket) -> bytes:
     version = tls1_3.tls_constants.ProtocolVersion.from_bytes(out[1:3], 'big')
     length = int.from_bytes(out[3:5], 'big')
     print("Got " + str(content_type) + ", version: " +
-          str(version) + ", length:" + str(length))
+          str(version) + ", length: " + str(length))
     out += socket.recv(length)
     return out
 
@@ -32,6 +32,7 @@ def main() -> int:
     sock = create_socket(state)
 
     tls1_3.client_hello.send_client_hello(sock, state)
+    state.step = tls1_3.tls_state.TLSStep.CLIENT_HELLO_SENT
     message = receive_message(sock)
     tls1_3.server_hello.handle_server_hello(message, state)
 

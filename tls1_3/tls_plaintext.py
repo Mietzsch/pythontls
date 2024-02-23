@@ -42,7 +42,8 @@ class TLSPlaintext:
             serialized_message[0:1], 'big')
         protocol_version = tls1_3.tls_constants.ProtocolVersion.from_bytes(
             serialized_message[1:3], 'big')
-        message = serialized_message[5:]
+        message_len = int.from_bytes(serialized_message[3:5], 'big')
+        message = serialized_message[5:5+message_len]
         return cls(content_type, protocol_version, message)
 
     def serialize(self) -> bytes:

@@ -1,15 +1,27 @@
 # tls_state.py
 
+from enum import Enum
+
 import tls1_3.tls_constants
+import tls1_3.tls_crypto
+
+
+class TLSStep(Enum):
+    CLIENT_HELLO = 1
+    CLIENT_HELLO_SENT = 2
 
 
 class tls_state:
     hostname = 'localhost'
     port = 44330
+    step = TLSStep.CLIENT_HELLO
     legacy_session_id: bytes
     proposed_cipher_suites: list[tls1_3.tls_constants.CipherSuite]
     chosen_cipher_suite: tls1_3.tls_constants.CipherSuite
+    offered_versions: list[tls1_3.tls_constants.ProtocolVersion]
+    chosen_version: tls1_3.tls_constants.ProtocolVersion
     keyshares = dict()
+    shared_secret = bytes()
 
     def add_key_share(self, group: tls1_3.tls_constants.NamedGroup, sk: bytes):
         self.keyshares[group] = sk
@@ -22,5 +34,28 @@ class tls_state:
 
     def add_chosen_cipher_suite(self, suite):
         if (self.proposed_cipher_suites.count(suite) != 1):
-            raise "Chosen cipher suite was not offered"
+            raise Exception("Chosen cipher suite was not offered")
         self.chosen_cipher_suite = suite
+
+    def handle_supported_versions(self, versions: list[tls1_3.tls_constants.ProtocolVersion]):
+        if self.step == TLSStep.CLIENT_HELLO:
+            self.offered_versions = versions
+        else:
+            if len(versions) != 1:
+                raise Exception("The versions list has to have length one")
+            chosen_version = versions[0]
+            if self.offered_versions.count(chosen_version) != 1:
+                raise Exception("Chosen version was not offered")
+            self.chosen_version = chosen_version
+
+    def handle_key_share(self, keyshares: dict):
+        if self.step == TLSStep.CLIENT_HELLO:
+            return
+        if len(keyshares) != 1:
+            raise Exception("only one key share allowed")
+
+        group, other_share = keyshares.popitem()
+        own_share = self.keyshares[group]
+        self.shared_secret = tls1_3.tls_crypto.generate_shared_secret(
+            group, own_share, other_share)
+        print("Calculated shared secret")
