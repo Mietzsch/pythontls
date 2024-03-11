@@ -32,7 +32,6 @@ def main() -> int:
     sock = create_socket(state)
 
     tls1_3.client_hello.send_client_hello(sock, state)
-    state.step = tls1_3.tls_state.TLSStep.CLIENT_HELLO_SENT
     message = receive_message(sock)
     tls1_3.server_hello.handle_server_hello(message, state)
 

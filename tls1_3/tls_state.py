@@ -4,6 +4,7 @@ from enum import Enum
 
 import tls1_3.tls_constants
 import tls1_3.tls_crypto
+import tls1_3.tls_handshake
 
 
 class TLSStep(Enum):
@@ -16,12 +17,14 @@ class tls_state:
     port = 44330
     step = TLSStep.CLIENT_HELLO
     legacy_session_id: bytes
+    transcript = dict()
     proposed_cipher_suites: list[tls1_3.tls_constants.CipherSuite]
     chosen_cipher_suite: tls1_3.tls_constants.CipherSuite
     offered_versions: list[tls1_3.tls_constants.ProtocolVersion]
     chosen_version: tls1_3.tls_constants.ProtocolVersion
     keyshares = dict()
     shared_secret = bytes()
+    keys: tls1_3.tls_crypto.tls_key_schedule
 
     def add_key_share(self, group: tls1_3.tls_constants.NamedGroup, sk: bytes):
         self.keyshares[group] = sk
@@ -32,10 +35,17 @@ class tls_state:
     def add_proposed_cipher_suites(self, suites):
         self.proposed_cipher_suites = suites
 
+    def handle_client_hello_sent(self, message):
+        self.step = tls1_3.tls_state.TLSStep.CLIENT_HELLO_SENT
+        self.transcript[tls1_3.tls_handshake.HandshakeCode] = message
+
     def add_chosen_cipher_suite(self, suite):
         if (self.proposed_cipher_suites.count(suite) != 1):
             raise Exception("Chosen cipher suite was not offered")
         self.chosen_cipher_suite = suite
+        self.keys = tls1_3.tls_crypto.tls_key_schedule(
+            self.chosen_cipher_suite)
+        self.keys.derive_early_secret()
 
     def handle_supported_versions(self, versions: list[tls1_3.tls_constants.ProtocolVersion]):
         if self.step == TLSStep.CLIENT_HELLO:

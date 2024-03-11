@@ -105,3 +105,4 @@ def send_client_hello(sock: socket.socket, state):
         handshake_message, tls1_3.tls_constants.ProtocolVersion.TLS_1_0)
     serialized = tls_plaintext.serialize()
     sock.sendall(serialized)
+    state.handle_client_hello_sent(handshake_message.serialize())

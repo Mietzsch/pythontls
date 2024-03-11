@@ -4,6 +4,8 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric import x25519
 from cryptography.hazmat.primitives.asymmetric import x448
 from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives import hmac
 
 import tls1_3.tls_constants
 
@@ -63,3 +65,41 @@ def generate_shared_secret(group: tls1_3.tls_constants.NamedGroup, own_secret: b
                 foreign_secret)
             ss = sk.exchange(foreign_pk)
             return ss
+
+
+def hdkf_expand(hash: hashes.HashAlgorithm, salt: bytes, ikm: bytes) -> bytes:
+    h = hmac.HMAC(salt, hash)
+    h.update(ikm)
+    return h.finalize()
+
+
+class tls_key_schedule:
+    hash: hashes.HashAlgorithm
+    early_secret: bytes
+    handshake_secret: bytes
+    master_secret: bytes
+
+    def __init__(self, cipher_suite):
+        match cipher_suite:
+            case tls1_3.tls_constants.CipherSuite.TLS_AES_128_GCM_SHA256:
+                self.hash = hashes.SHA256()
+            case tls1_3.tls_constants.CipherSuite.TLS_AES_256_GCM_SHA384:
+                self.hash = hashes.SHA384()
+            case tls1_3.tls_constants.CipherSuite.TLS_CHACHA20_POLY1305_SHA256:
+                self.hash = hashes.SHA256()
+
+    def derive_early_secret(self, psk=bytes()):
+        if len(psk) == 0:
+            self.early_secret = hdkf_expand(
+                self.hash, bytes(self.hash.digest_size), bytes(self.hash.digest_size))
+        else:
+            self.early_secret = hdkf_expand(
+                self.hash, bytes(self.hash.digest_size), psk)
+
+    def derive_handshake_secret(self, ecdh_secret=bytes(), transcript=dict()):
+        pass
+        # derive
+
+    def derive_master_secret(self, transcript=dict()):
+        pass
+        # derive
