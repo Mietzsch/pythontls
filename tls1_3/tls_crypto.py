@@ -6,6 +6,7 @@ from cryptography.hazmat.primitives.asymmetric import x448
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives import hmac
+import copy
 
 import tls1_3.tls_constants
 
@@ -67,10 +68,43 @@ def generate_shared_secret(group: tls1_3.tls_constants.NamedGroup, own_secret: b
             return ss
 
 
-def hdkf_expand(hash: hashes.HashAlgorithm, salt: bytes, ikm: bytes) -> bytes:
+def hdkf_extract(hash: hashes.HashAlgorithm, salt: bytes, ikm: bytes) -> bytes:
     h = hmac.HMAC(salt, hash)
     h.update(ikm)
     return h.finalize()
+
+
+def hkdf_expand(hash: hashes.HashAlgorithm, prk: bytes, info: bytes, l: int) -> bytes:
+    if len(prk) < hash.digest_size:
+        raise "prk too short!"
+
+    if l > hash.digest_size:
+        raise "Not implemented!"
+
+    counter = 1
+
+    h = hmac.HMAC(prk, hash)
+    h.update(info)
+    h.update(counter.to_bytes(1, 'big'))
+    return h.finalize()[0:l]
+
+
+def hkdf_expand_label(hash: hashes.HashAlgorithm, secret: bytes, label: str, context: bytes, l: int) -> bytes:
+    h_label = l.to_bytes(2, 'big')
+    stringlabel = "tls13 " + label
+    h_label += len(stringlabel).to_bytes(1, 'big')
+    h_label += stringlabel.encode()
+    h_label += len(context).to_bytes(1, 'big')
+    h_label += context
+    return hkdf_expand(hash, secret, h_label, l)
+
+
+def derive_secret(hash: hashes.HashAlgorithm, secret: bytes, label: str, messages: list[bytes]) -> bytes:
+    h = hashes.Hash(hash)
+    for message in messages:
+        h.update(message)
+    transcript_hash = h.finalize()
+    return hkdf_expand_label(hash, secret, label, transcript_hash, hash.digest_size)
 
 
 class tls_key_schedule:
@@ -78,11 +112,14 @@ class tls_key_schedule:
     early_secret: bytes
     handshake_secret: bytes
     master_secret: bytes
+    client_handshake_traffic_secret: bytes
+    server_handshake_traffic_secret: bytes
 
     def __init__(self, cipher_suite):
         match cipher_suite:
             case tls1_3.tls_constants.CipherSuite.TLS_AES_128_GCM_SHA256:
                 self.hash = hashes.SHA256()
+                self.hash
             case tls1_3.tls_constants.CipherSuite.TLS_AES_256_GCM_SHA384:
                 self.hash = hashes.SHA384()
             case tls1_3.tls_constants.CipherSuite.TLS_CHACHA20_POLY1305_SHA256:
@@ -90,15 +127,25 @@ class tls_key_schedule:
 
     def derive_early_secret(self, psk=bytes()):
         if len(psk) == 0:
-            self.early_secret = hdkf_expand(
+            self.early_secret = hdkf_extract(
                 self.hash, bytes(self.hash.digest_size), bytes(self.hash.digest_size))
         else:
-            self.early_secret = hdkf_expand(
+            self.early_secret = hdkf_extract(
                 self.hash, bytes(self.hash.digest_size), psk)
 
     def derive_handshake_secret(self, ecdh_secret=bytes(), transcript=dict()):
-        pass
-        # derive
+        derived = derive_secret(
+            self.hash, self.early_secret, "derived", [bytes()])
+        self.handshake_secret = hdkf_extract(
+            self.hash, derived, ecdh_secret)
+
+        client_hello = transcript[tls1_3.tls_constants.HandshakeCode.CLIENT_HELLO]
+        server_hello = transcript[tls1_3.tls_constants.HandshakeCode.SERVER_HELLO]
+
+        self.client_handshake_traffic_secret = derive_secret(
+            self.hash, self.handshake_secret, "c hs traffic", [client_hello, server_hello])
+        self.server_handshake_traffic_secret = derive_secret(
+            self.hash, self.handshake_secret, "s hs traffic", [client_hello, server_hello])
 
     def derive_master_secret(self, transcript=dict()):
         pass

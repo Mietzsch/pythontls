@@ -34,6 +34,7 @@ def main() -> int:
     tls1_3.client_hello.send_client_hello(sock, state)
     message = receive_message(sock)
     tls1_3.server_hello.handle_server_hello(message, state)
+    message = receive_message(sock)
 
     print("closing socket")
     sock.close()

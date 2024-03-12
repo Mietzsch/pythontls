@@ -10,6 +10,7 @@ import tls1_3.tls_handshake
 class TLSStep(Enum):
     CLIENT_HELLO = 1
     CLIENT_HELLO_SENT = 2
+    SERVER_HELLO_RECEIVED = 3
 
 
 class tls_state:
@@ -35,9 +36,14 @@ class tls_state:
     def add_proposed_cipher_suites(self, suites):
         self.proposed_cipher_suites = suites
 
-    def handle_client_hello_sent(self, message):
-        self.step = tls1_3.tls_state.TLSStep.CLIENT_HELLO_SENT
-        self.transcript[tls1_3.tls_handshake.HandshakeCode] = message
+    def save_message(self, code, message):
+        match code:
+            case tls1_3.tls_handshake.HandshakeCode.CLIENT_HELLO:
+                self.step = TLSStep.CLIENT_HELLO_SENT
+            case tls1_3.tls_handshake.HandshakeCode.SERVER_HELLO:
+                self.step = TLSStep.SERVER_HELLO_RECEIVED
+
+        self.transcript[code] = message
 
     def add_chosen_cipher_suite(self, suite):
         if (self.proposed_cipher_suites.count(suite) != 1):
@@ -68,4 +74,4 @@ class tls_state:
         own_share = self.keyshares[group]
         self.shared_secret = tls1_3.tls_crypto.generate_shared_secret(
             group, own_share, other_share)
-        print("Calculated shared secret")
+        self.keys.derive_handshake_secret(self.shared_secret, self.transcript)
