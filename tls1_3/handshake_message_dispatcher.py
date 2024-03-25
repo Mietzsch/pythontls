@@ -49,3 +49,5 @@ def handle_typed_message(message: tls1_3.tls_handshake.Handshake, state: tls_sta
             typed_encrypted_extensions = tls1_3.encrypted_extensions.encypted_extensions(
                 message.msg)
             typed_encrypted_extensions.update_state(state)
+        case _:
+            raise NotImplementedError("Not implemented")

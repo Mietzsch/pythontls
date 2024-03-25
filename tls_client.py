@@ -32,9 +32,11 @@ def main() -> int:
     sock = create_socket(state)
 
     tls1_3.client_hello.send_client_hello(sock, state)
-    message = receive_message(sock)
+    message = receive_message(sock)  # server hello
     tls1_3.handshake_message_dispatcher.handle_from_plaintext(message, state)
-    message = receive_message(sock)
+    message = receive_message(sock)  # encrypted extensions
+    tls1_3.handshake_message_dispatcher.handle_from_ciphertext(message, state)
+    message = receive_message(sock)  # server certificate
     tls1_3.handshake_message_dispatcher.handle_from_ciphertext(message, state)
 
     print("closing socket")
