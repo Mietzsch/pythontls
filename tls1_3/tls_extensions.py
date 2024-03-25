@@ -48,9 +48,9 @@ class SupportedVersionsExtension(Extension):
         self.supported_versions = versions
 
     @classmethod
-    def fromSerializedMessage(cls, serialized_message: bytes):
+    def fromSerializedMessage(cls, message: bytes):
         version = tls1_3.tls_constants.ProtocolVersion.from_bytes(
-            serialized_message, 'big')
+            message, 'big')
         return cls([version])
 
     def getType(self) -> ExtensionCode:
@@ -116,11 +116,11 @@ class KeyShareExtension(Extension):
             self.key_shares[group] = share
 
     @classmethod
-    def fromSerializedMessage(cls, serialized_message: bytes):
+    def fromSerializedMessage(cls, message: bytes):
         group = tls1_3.tls_constants.NamedGroup.from_bytes(
-            serialized_message[0:2], 'big')
-        len = int.from_bytes(serialized_message[2:4], 'big')
-        key_share = serialized_message[4:4+len]
+            message[0:2], 'big')
+        len = int.from_bytes(message[2:4], 'big')
+        key_share = message[4:4+len]
         return cls([group], [key_share])
 
     def getType(self) -> ExtensionCode:
@@ -139,3 +139,31 @@ class KeyShareExtension(Extension):
 
     def update_state(self, state: tls1_3.tls_state.tls_state):
         state.handle_key_share(self.key_shares)
+
+
+def compile_list_of_extensions(message: bytes) -> list[Extension]:
+    ptr = 0
+    extensions_len = int.from_bytes(message[ptr:ptr+2], 'big')
+    ptr += 2
+    last_byte = ptr + extensions_len
+    extensions = list()
+    while (ptr < last_byte):
+        cur_extension_type = tls1_3.tls_extensions.ExtensionCode.from_bytes(
+            message[ptr:ptr+2], 'big')
+        ptr += 2
+        cur_extension_len = int.from_bytes(
+            message[ptr:ptr+2], 'big')
+        ptr += 2
+        cur_extension_msg = message[ptr:ptr+cur_extension_len]
+        match cur_extension_type:
+            case tls1_3.tls_extensions.ExtensionCode.SUPPORTED_VERSIONS:
+                extensions.append(
+                    tls1_3.tls_extensions.SupportedVersionsExtension.fromSerializedMessage(cur_extension_msg))
+            case tls1_3.tls_extensions.ExtensionCode.KEY_SHARE:
+                extensions.append(
+                    tls1_3.tls_extensions.KeyShareExtension.fromSerializedMessage(
+                        cur_extension_msg)
+                )
+        ptr += cur_extension_len
+
+    return extensions

@@ -34,33 +34,11 @@ class server_hello(tls1_3.tls_handshake.HandshakeMessage):
         self.legacy_compression_method = int.from_bytes(
             serialized_message[ptr:ptr+1], 'big')
         ptr += 1
-        extensions_len = int.from_bytes(serialized_message[ptr:ptr+2], 'big')
-        ptr += 2
-        last_byte = ptr + extensions_len
-        self.extensions = list()
-        while (ptr < last_byte):
-            cur_extension_type = tls1_3.tls_extensions.ExtensionCode.from_bytes(
-                serialized_message[ptr:ptr+2], 'big')
-            ptr += 2
-            cur_extension_len = int.from_bytes(
-                serialized_message[ptr:ptr+2], 'big')
-            ptr += 2
-            cur_extension_msg = serialized_message[ptr:ptr+cur_extension_len]
-
-            match cur_extension_type:
-                case tls1_3.tls_extensions.ExtensionCode.SUPPORTED_VERSIONS:
-                    self.extensions.append(
-                        tls1_3.tls_extensions.SupportedVersionsExtension.fromSerializedMessage(cur_extension_msg))
-
-                case tls1_3.tls_extensions.ExtensionCode.KEY_SHARE:
-                    self.extensions.append(
-                        tls1_3.tls_extensions.KeyShareExtension.fromSerializedMessage(
-                            cur_extension_msg)
-                    )
-            ptr += cur_extension_len
+        self.extensions = tls1_3.tls_extensions.compile_list_of_extensions(
+            serialized_message[ptr:])
 
     def getType(self) -> tls1_3.tls_handshake.HandshakeCode:
-        return tls1_3.tls_handshake.HandshakeCode.SERVER_HELLO
+        return tls1_3.tls_constants.HandshakeCode.SERVER_HELLO
 
     def update_state(self, state: tls1_3.tls_state.tls_state):
         if (self.legacy_session_id != state.legacy_session_id):

@@ -6,7 +6,9 @@ from cryptography.hazmat.primitives.asymmetric import x448
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives import hmac
-import copy
+from cryptography.hazmat.primitives.ciphers.aead import (
+    ChaCha20Poly1305, AESGCM)
+
 
 import tls1_3.tls_constants
 
@@ -68,6 +70,40 @@ def generate_shared_secret(group: tls1_3.tls_constants.NamedGroup, own_secret: b
             return ss
 
 
+def decrypt_record(suite: tls1_3.tls_constants.CipherSuite, key: bytes, record_no: int, messsage: bytes):
+    if (record_no.bit_length() > 64):
+        raise Exception("Too many records")
+    padded_record_number = record_no.to_bytes(12, 'big')
+
+    match suite:
+        case tls1_3.tls_constants.CipherSuite.TLS_AES_128_GCM_SHA256:
+            server_write_iv = hkdf_expand_label(
+                hashes.SHA256(), key, "iv", bytes(), 12)
+            iv = bytes(a ^ b for a, b in zip(
+                padded_record_number, server_write_iv))
+            peer_write_key = hkdf_expand_label(
+                hashes.SHA256(), key, "key", bytes(), 16)
+            decryptor = AESGCM(peer_write_key)
+        case tls1_3.tls_constants.CipherSuite.TLS_AES_256_GCM_SHA384:
+            server_write_iv = hkdf_expand_label(
+                hashes.SHA384(), key, "iv", bytes(), 12)
+            iv = bytes(a ^ b for a, b in zip(
+                padded_record_number, server_write_iv))
+            peer_write_key = hkdf_expand_label(
+                hashes.SHA384(), key, "key", bytes(), 32)
+            decryptor = AESGCM(peer_write_key)
+        case tls1_3.tls_constants.CipherSuite.TLS_CHACHA20_POLY1305_SHA256:
+            server_write_iv = hkdf_expand_label(
+                hashes.SHA256(), key, "iv", bytes(), 12)
+            iv = bytes(a ^ b for a, b in zip(
+                padded_record_number, server_write_iv))
+            peer_write_key = hkdf_expand_label(
+                hashes.SHA256(), key, "key", bytes(), 32)
+            decryptor = ChaCha20Poly1305(peer_write_key)
+
+    return decryptor.decrypt(iv, messsage[5:], messsage[0:5])
+
+
 def hdkf_extract(hash: hashes.HashAlgorithm, salt: bytes, ikm: bytes) -> bytes:
     h = hmac.HMAC(salt, hash)
     h.update(ikm)
@@ -76,10 +112,10 @@ def hdkf_extract(hash: hashes.HashAlgorithm, salt: bytes, ikm: bytes) -> bytes:
 
 def hkdf_expand(hash: hashes.HashAlgorithm, prk: bytes, info: bytes, l: int) -> bytes:
     if len(prk) < hash.digest_size:
-        raise "prk too short!"
+        raise Exception("prk too short!")
 
     if l > hash.digest_size:
-        raise "Not implemented!"
+        raise NotImplementedError("Not implemented!")
 
     counter = 1
 

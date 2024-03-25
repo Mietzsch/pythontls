@@ -5,6 +5,7 @@ import socket
 
 import tls1_3.client_hello
 import tls1_3.server_hello
+import tls1_3.encrypted_extensions  # TODO Refactor incoming message handling
 import tls1_3.tls_state
 import tls1_3.tls_plaintext
 import tls1_3.tls_constants
@@ -35,6 +36,9 @@ def main() -> int:
     message = receive_message(sock)
     tls1_3.server_hello.handle_server_hello(message, state)
     message = receive_message(sock)
+    decrypted_message = state.decrypt_record(message)
+    tls1_3.encrypted_extensions.handle_encypted_extensions(
+        decrypted_message, state)
 
     print("closing socket")
     sock.close()
