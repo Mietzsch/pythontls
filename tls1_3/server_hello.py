@@ -48,21 +48,3 @@ class server_hello(tls1_3.tls_handshake.HandshakeMessage):
 
         for extension in self.extensions:
             extension.update_state(state)
-
-
-def handle_server_hello(complete_message, state):
-    typed_message = tls1_3.tls_plaintext.TLSPlaintext.fromSerializedMessage(
-        complete_message)
-    if (typed_message.content_type != tls1_3.tls_plaintext.ContentType.HANDSHAKE):
-        raise Exception("Not a Handshake Protocol")
-
-    state.save_message(
-        tls1_3.tls_constants.HandshakeCode.SERVER_HELLO, typed_message.message)
-
-    handshake_message = tls1_3.tls_handshake.Handshake.fromSerializedMessage(
-        typed_message.message)
-    if (handshake_message.type != tls1_3.tls_constants.HandshakeCode.SERVER_HELLO):
-        raise Exception("Not a server hello")
-
-    typed_server_hello = server_hello(handshake_message.msg)
-    typed_server_hello.update_state(state)
