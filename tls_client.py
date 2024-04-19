@@ -40,6 +40,8 @@ def main() -> int:
     tls1_3.handshake_message_dispatcher.handle_from_ciphertext(message, state)
     message = receive_message(sock)  # certificate verify
     tls1_3.handshake_message_dispatcher.handle_from_ciphertext(message, state)
+    message = receive_message(sock)  # finished
+    tls1_3.handshake_message_dispatcher.handle_from_ciphertext(message, state)
 
     print("closing socket")
     sock.close()

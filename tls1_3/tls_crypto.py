@@ -183,6 +183,18 @@ class tls_key_schedule:
         self.server_handshake_traffic_secret = derive_secret(
             self.hash, self.handshake_secret, "s hs traffic", [client_hello, server_hello])
 
+    def verify_server_finished(self, verify_data, transcript=dict()):
+        server_finished_key = hkdf_expand_label(
+            self.hash, self.server_handshake_traffic_secret, "finished", bytes(), self.hash.digest_size)
+        h = hashes.Hash(self.hash)
+        for code, message in transcript.items():
+            h.update(message)
+        hm = hmac.HMAC(server_finished_key, self.hash)
+        hm.update(h.finalize())
+        calculated_verify_data = hm.finalize()
+        if verify_data != calculated_verify_data:
+            raise Exception("Server finished incorrect")
+
     def derive_master_secret(self, transcript=dict()):
         pass
         # derive

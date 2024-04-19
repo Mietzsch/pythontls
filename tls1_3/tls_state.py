@@ -11,6 +11,7 @@ class TLSStep(Enum):
     CLIENT_HELLO = 1
     CLIENT_HELLO_SENT = 2
     SERVER_HELLO_RECEIVED = 3
+    SERVER_HANDSHAKE_FINISHED = 4
 
 
 class tls_state:
@@ -45,6 +46,8 @@ class tls_state:
                 self.step = TLSStep.CLIENT_HELLO_SENT
             case tls1_3.tls_handshake.HandshakeCode.SERVER_HELLO:
                 self.step = TLSStep.SERVER_HELLO_RECEIVED
+            case tls1_3.tls_handshake.HandshakeCode.FINISHED:
+                self.step = TLSStep.SERVER_HANDSHAKE_FINISHED
 
         self.transcript[code] = message
 
@@ -86,6 +89,9 @@ class tls_state:
         if self.offered_sig_schemes.count(scheme) != 1:
             raise Exception("Chosen signature scheme was not offered")
         print("Skipping signature verification")
+
+    def verify_finished(self, verify_data):
+        self.keys.verify_server_finished(verify_data, self.transcript)
 
     def decrypt_record(self, tls_ciphertext):
         if self.step == TLSStep.SERVER_HELLO_RECEIVED:

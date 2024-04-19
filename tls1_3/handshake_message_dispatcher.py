@@ -8,6 +8,7 @@ from tls1_3.messages.server_hello import server_hello
 from tls1_3.messages.encrypted_extensions import encypted_extensions
 from tls1_3.messages.certificate import certificate
 from tls1_3.messages.certificate_verify import certificate_verify
+from tls1_3.messages.finished import finished
 
 
 def handle_from_plaintext(complete_message: bytes, state: tls_state):
@@ -37,8 +38,8 @@ def handle_from_ciphertext(complete_message: bytes, state: tls_state):
     handshake_message = tls1_3.tls_handshake.Handshake.fromSerializedMessage(
         decrypted_message[:-1])
 
-    state.save_message(handshake_message.type, decrypted_message[:-1])
     handle_typed_message(handshake_message, state)
+    state.save_message(handshake_message.type, decrypted_message[:-1])
 
 
 def handle_typed_message(message: tls1_3.tls_handshake.Handshake, state: tls_state):
@@ -54,6 +55,9 @@ def handle_typed_message(message: tls1_3.tls_handshake.Handshake, state: tls_sta
             typed_encrypted_extensions.update_state(state)
         case HandshakeCode.CERTIFICATE_VERIFY:
             typed_encrypted_extensions = certificate_verify(message.msg)
+            typed_encrypted_extensions.update_state(state)
+        case HandshakeCode.FINISHED:
+            typed_encrypted_extensions = finished(message.msg)
             typed_encrypted_extensions.update_state(state)
         case _:
             raise NotImplementedError("Not implemented")
