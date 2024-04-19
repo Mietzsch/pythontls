@@ -15,5 +15,8 @@ class finished(tls1_3.tls_handshake.HandshakeMessage):
     def getType(self) -> tls1_3.tls_handshake.HandshakeCode:
         return tls1_3.tls_constants.HandshakeCode.FINISHED
 
+    def serialize(self) -> bytes:
+        return self.verify_data
+
     def update_state(self, state: tls1_3.tls_state.tls_state):
         state.verify_finished(self.verify_data)

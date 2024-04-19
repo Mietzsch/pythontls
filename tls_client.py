@@ -4,6 +4,7 @@ import sys
 import socket
 
 import tls1_3.messages.client_hello
+import tls1_3.messages.client_finished
 import tls1_3.handshake_message_dispatcher
 import tls1_3.tls_state
 import tls1_3.tls_plaintext
@@ -32,16 +33,21 @@ def main() -> int:
     sock = create_socket(state)
 
     tls1_3.messages.client_hello.send_client_hello(sock, state)
-    message = receive_message(sock)  # server hello
+
+    # server hello
+    message = receive_message(sock)
     tls1_3.handshake_message_dispatcher.handle_from_plaintext(message, state)
-    message = receive_message(sock)  # encrypted extensions
-    tls1_3.handshake_message_dispatcher.handle_from_ciphertext(message, state)
-    message = receive_message(sock)  # server certificate
-    tls1_3.handshake_message_dispatcher.handle_from_ciphertext(message, state)
-    message = receive_message(sock)  # certificate verify
-    tls1_3.handshake_message_dispatcher.handle_from_ciphertext(message, state)
-    message = receive_message(sock)  # finished
-    tls1_3.handshake_message_dispatcher.handle_from_ciphertext(message, state)
+
+    # encrypted extensions
+    # server certificate
+    # certificate verify
+    # finished
+    while state.step != tls1_3.tls_state.TLSStep.SERVER_HANDSHAKE_FINISHED:
+        message = receive_message(sock)  #
+        tls1_3.handshake_message_dispatcher.handle_from_ciphertext(
+            message, state)
+
+    tls1_3.messages.client_finished.send_client_finished(sock, state)
 
     print("closing socket")
     sock.close()

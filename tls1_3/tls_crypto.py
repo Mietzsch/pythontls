@@ -104,6 +104,40 @@ def decrypt_record(suite: tls1_3.tls_constants.CipherSuite, key: bytes, record_n
     return decryptor.decrypt(iv, messsage[5:], messsage[0:5])
 
 
+def encrypt_record(suite: tls1_3.tls_constants.CipherSuite, key: bytes, record_no: int, aad: bytes, messsage: bytes):
+    if (record_no.bit_length() > 64):
+        raise Exception("Too many records")
+    padded_record_number = record_no.to_bytes(12, 'big')
+
+    match suite:
+        case tls1_3.tls_constants.CipherSuite.TLS_AES_128_GCM_SHA256:
+            client_write_iv = hkdf_expand_label(
+                hashes.SHA256(), key, "iv", bytes(), 12)
+            iv = bytes(a ^ b for a, b in zip(
+                padded_record_number, client_write_iv))
+            peer_write_key = hkdf_expand_label(
+                hashes.SHA256(), key, "key", bytes(), 16)
+            encryptor = AESGCM(peer_write_key)
+        case tls1_3.tls_constants.CipherSuite.TLS_AES_256_GCM_SHA384:
+            client_write_iv = hkdf_expand_label(
+                hashes.SHA384(), key, "iv", bytes(), 12)
+            iv = bytes(a ^ b for a, b in zip(
+                padded_record_number, client_write_iv))
+            peer_write_key = hkdf_expand_label(
+                hashes.SHA384(), key, "key", bytes(), 32)
+            encryptor = AESGCM(peer_write_key)
+        case tls1_3.tls_constants.CipherSuite.TLS_CHACHA20_POLY1305_SHA256:
+            client_write_iv = hkdf_expand_label(
+                hashes.SHA256(), key, "iv", bytes(), 12)
+            iv = bytes(a ^ b for a, b in zip(
+                padded_record_number, client_write_iv))
+            peer_write_key = hkdf_expand_label(
+                hashes.SHA256(), key, "key", bytes(), 32)
+            encryptor = ChaCha20Poly1305(peer_write_key)
+
+    return encryptor.encrypt(iv, messsage, aad)
+
+
 def hdkf_extract(hash: hashes.HashAlgorithm, salt: bytes, ikm: bytes) -> bytes:
     h = hmac.HMAC(salt, hash)
     h.update(ikm)
@@ -194,6 +228,16 @@ class tls_key_schedule:
         calculated_verify_data = hm.finalize()
         if verify_data != calculated_verify_data:
             raise Exception("Server finished incorrect")
+
+    def calc_client_finished(self, transcript=dict()):
+        client_finished_key = hkdf_expand_label(
+            self.hash, self.client_handshake_traffic_secret, "finished", bytes(), self.hash.digest_size)
+        h = hashes.Hash(self.hash)
+        for code, message in transcript.items():
+            h.update(message)
+        hm = hmac.HMAC(client_finished_key, self.hash)
+        hm.update(h.finalize())
+        return hm.finalize()
 
     def derive_master_secret(self, transcript=dict()):
         pass

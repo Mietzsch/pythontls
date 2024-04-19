@@ -2,7 +2,7 @@
 
 import tls1_3.tls_plaintext
 import tls1_3.tls_handshake
-from tls1_3.tls_constants import HandshakeCode
+from tls1_3.tls_constants import HandshakeCode, ProtocolVersion
 from tls1_3.tls_state import tls_state
 from tls1_3.messages.server_hello import server_hello
 from tls1_3.messages.encrypted_extensions import encypted_extensions
@@ -40,6 +40,21 @@ def handle_from_ciphertext(complete_message: bytes, state: tls_state):
 
     handle_typed_message(handshake_message, state)
     state.save_message(handshake_message.type, decrypted_message[:-1])
+
+
+def create_handshake_ct(complete_message: bytes, state: tls_state):
+    handshake = tls1_3.tls_plaintext.ContentType.HANDSHAKE
+    complete_message += int(handshake.value).to_bytes(1, 'big')
+
+    app_data = tls1_3.tls_plaintext.ContentType.APPLICATION_DATA
+    legacy_record_version = ProtocolVersion.TLS_1_2
+    aad = int(app_data.value).to_bytes(1, 'big')
+    aad += int(legacy_record_version.value).to_bytes(2, 'big')
+    record_len_with_tag = len(complete_message) + 16
+    aad += record_len_with_tag.to_bytes(2, 'big')
+
+    encrypted = state.encrypt_record(aad, complete_message)
+    return aad + encrypted
 
 
 def handle_typed_message(message: tls1_3.tls_handshake.Handshake, state: tls_state):

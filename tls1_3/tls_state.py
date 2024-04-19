@@ -30,6 +30,7 @@ class tls_state:
     shared_secret = bytes()
     keys: tls1_3.tls_crypto.tls_key_schedule
     decrypted_records = 0
+    encrypted_records = 0
 
     def add_key_share(self, group: tls1_3.tls_constants.NamedGroup, sk: bytes):
         self.keyshares[group] = sk
@@ -93,6 +94,9 @@ class tls_state:
     def verify_finished(self, verify_data):
         self.keys.verify_server_finished(verify_data, self.transcript)
 
+    def calc_client_finished(self):
+        return self.keys.calc_client_finished(self.transcript)
+
     def decrypt_record(self, tls_ciphertext):
         if self.step == TLSStep.SERVER_HELLO_RECEIVED:
             key = self.keys.server_handshake_traffic_secret
@@ -100,3 +104,11 @@ class tls_state:
             self.chosen_cipher_suite, key, self.decrypted_records, tls_ciphertext)
         self.decrypted_records += 1
         return decrypted
+
+    def encrypt_record(self, aad, message):
+        if self.step == TLSStep.SERVER_HANDSHAKE_FINISHED:
+            key = self.keys.client_handshake_traffic_secret
+        encrypted = tls1_3.tls_crypto.encrypt_record(
+            self.chosen_cipher_suite, key, self.encrypted_records, aad, message)
+        self.encrypted_records += 1
+        return encrypted

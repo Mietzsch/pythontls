@@ -3,6 +3,15 @@
 from enum import IntEnum
 
 
+class ContentType(IntEnum):
+    INVALID = 0,
+    CHANGE_CIPHER_SPEC = 20,
+    ALERT = 21,
+    HANDSHAKE = 22,
+    APPLICATION_DATA = 23,
+    EMPTY = 255
+
+
 class CipherSuite(IntEnum):
     TLS_AES_128_GCM_SHA256 = 0x1301,
     TLS_AES_256_GCM_SHA384 = 0x1302,

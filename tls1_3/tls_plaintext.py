@@ -2,16 +2,8 @@
 
 from enum import IntEnum
 
-import tls1_3.tls_constants
 
-
-class ContentType(IntEnum):
-    INVALID = 0,
-    CHANGE_CIPHER_SPEC = 20,
-    ALERT = 21,
-    HANDSHAKE = 22,
-    APPLICATION_DATA = 23,
-    EMPTY = 255
+from tls1_3.tls_constants import ContentType, ProtocolVersion
 
 
 class TLSPlaintextMessage:
@@ -24,7 +16,7 @@ class TLSPlaintextMessage:
 
 class TLSPlaintext:
     content_type: ContentType
-    protocol_version: tls1_3.tls_constants.ProtocolVersion
+    protocol_version: ProtocolVersion
     message: bytes
 
     def __init__(self, content_type, protocol_version, message):
@@ -33,14 +25,14 @@ class TLSPlaintext:
         self.message = message
 
     @classmethod
-    def fromTLSPlaintext(cls, message: TLSPlaintextMessage, protocol_version=tls1_3.tls_constants.ProtocolVersion.TLS_1_2):
+    def fromTLSPlaintext(cls, message: TLSPlaintextMessage, protocol_version=ProtocolVersion.TLS_1_2):
         return cls(message.getType(), protocol_version, message.serialize())
 
     @classmethod
     def fromSerializedMessage(cls, serialized_message: bytes):
-        content_type = tls1_3.tls_plaintext.ContentType.from_bytes(
+        content_type = ContentType.from_bytes(
             serialized_message[0:1], 'big')
-        protocol_version = tls1_3.tls_constants.ProtocolVersion.from_bytes(
+        protocol_version = ProtocolVersion.from_bytes(
             serialized_message[1:3], 'big')
         message_len = int.from_bytes(serialized_message[3:5], 'big')
         message = serialized_message[5:5+message_len]
