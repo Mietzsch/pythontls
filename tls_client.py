@@ -5,7 +5,7 @@ import socket
 
 import tls1_3.messages.client_hello
 import tls1_3.messages.client_finished
-import tls1_3.handshake_message_dispatcher
+import tls1_3.message_dispatcher
 import tls1_3.tls_state
 import tls1_3.tls_plaintext
 import tls1_3.tls_constants
@@ -36,18 +36,28 @@ def main() -> int:
 
     # server hello
     message = receive_message(sock)
-    tls1_3.handshake_message_dispatcher.handle_from_plaintext(message, state)
+    tls1_3.message_dispatcher.handle_from_plaintext(message, state)
 
     # encrypted extensions
     # server certificate
     # certificate verify
     # finished
     while state.step != tls1_3.tls_state.TLSStep.SERVER_HANDSHAKE_FINISHED:
-        message = receive_message(sock)  #
-        tls1_3.handshake_message_dispatcher.handle_from_ciphertext(
+        message = receive_message(sock)
+        tls1_3.message_dispatcher.handle_handshake_from_ciphertext(
             message, state)
 
     tls1_3.messages.client_finished.send_client_finished(sock, state)
+    state.finish_session_setup()
+
+    print("Sent:")
+    tls1_3.message_dispatcher.send_application_ct(
+        sock, "ping\n".encode(), state)
+    print("ping")
+    message = receive_message(sock)
+    print("Got:")
+    tls1_3.message_dispatcher.handle_app_data_from_ciphertext(
+        message, state)
 
     print("closing socket")
     sock.close()

@@ -2,7 +2,7 @@
 
 
 import tls1_3.tls_handshake
-import tls1_3.handshake_message_dispatcher
+import tls1_3.message_dispatcher
 import tls1_3.tls_constants
 from tls1_3.messages.finished import finished
 
@@ -16,6 +16,6 @@ def create_client_finished(state):
 
 def send_client_finished(sock, state):
     client_finished = create_client_finished(state)
-    ct = tls1_3.handshake_message_dispatcher.create_handshake_ct(
+    ct = tls1_3.message_dispatcher.create_handshake_ct(
         client_finished, state)
     sock.sendall(ct)

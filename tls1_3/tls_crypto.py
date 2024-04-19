@@ -169,9 +169,9 @@ def hkdf_expand_label(hash: hashes.HashAlgorithm, secret: bytes, label: str, con
     return hkdf_expand(hash, secret, h_label, l)
 
 
-def derive_secret(hash: hashes.HashAlgorithm, secret: bytes, label: str, messages: list[bytes]) -> bytes:
+def derive_secret(hash: hashes.HashAlgorithm, secret: bytes, label: str, transcript: dict) -> bytes:
     h = hashes.Hash(hash)
-    for message in messages:
+    for code, message in transcript.items():
         h.update(message)
     transcript_hash = h.finalize()
     return hkdf_expand_label(hash, secret, label, transcript_hash, hash.digest_size)
@@ -184,6 +184,8 @@ class tls_key_schedule:
     master_secret: bytes
     client_handshake_traffic_secret: bytes
     server_handshake_traffic_secret: bytes
+    client_application_traffic_secret: bytes
+    server_application_traffic_secret: bytes
 
     def __init__(self, cipher_suite):
         match cipher_suite:
@@ -205,17 +207,14 @@ class tls_key_schedule:
 
     def derive_handshake_secret(self, ecdh_secret=bytes(), transcript=dict()):
         derived = derive_secret(
-            self.hash, self.early_secret, "derived", [bytes()])
+            self.hash, self.early_secret, "derived", dict())
         self.handshake_secret = hdkf_extract(
             self.hash, derived, ecdh_secret)
 
-        client_hello = transcript[tls1_3.tls_constants.HandshakeCode.CLIENT_HELLO]
-        server_hello = transcript[tls1_3.tls_constants.HandshakeCode.SERVER_HELLO]
-
         self.client_handshake_traffic_secret = derive_secret(
-            self.hash, self.handshake_secret, "c hs traffic", [client_hello, server_hello])
+            self.hash, self.handshake_secret, "c hs traffic", transcript)
         self.server_handshake_traffic_secret = derive_secret(
-            self.hash, self.handshake_secret, "s hs traffic", [client_hello, server_hello])
+            self.hash, self.handshake_secret, "s hs traffic", transcript)
 
     def verify_server_finished(self, verify_data, transcript=dict()):
         server_finished_key = hkdf_expand_label(
@@ -240,5 +239,12 @@ class tls_key_schedule:
         return hm.finalize()
 
     def derive_master_secret(self, transcript=dict()):
-        pass
-        # derive
+        derived = derive_secret(
+            self.hash, self.handshake_secret, "derived", dict())
+        self.master_secret = hdkf_extract(
+            self.hash, derived, bytes(self.hash.digest_size))
+
+        self.client_application_traffic_secret = derive_secret(
+            self.hash, self.master_secret, "c ap traffic", transcript)
+        self.server_application_traffic_secret = derive_secret(
+            self.hash, self.master_secret, "s ap traffic", transcript)

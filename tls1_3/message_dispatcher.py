@@ -1,4 +1,6 @@
-# handshake_message_dispatcher.py
+# message_dispatcher.py
+
+import socket
 
 import tls1_3.tls_plaintext
 import tls1_3.tls_handshake
@@ -24,7 +26,7 @@ def handle_from_plaintext(complete_message: bytes, state: tls_state):
     handle_typed_message(handshake_message, state)
 
 
-def handle_from_ciphertext(complete_message: bytes, state: tls_state):
+def handle_handshake_from_ciphertext(complete_message: bytes, state: tls_state):
     decrypted_message = state.decrypt_record(complete_message)
     if decrypted_message[-1] == 0:
         raise NotImplementedError("Padding not implemented")
@@ -42,9 +44,8 @@ def handle_from_ciphertext(complete_message: bytes, state: tls_state):
     state.save_message(handshake_message.type, decrypted_message[:-1])
 
 
-def create_handshake_ct(complete_message: bytes, state: tls_state):
-    handshake = tls1_3.tls_plaintext.ContentType.HANDSHAKE
-    complete_message += int(handshake.value).to_bytes(1, 'big')
+def create_ct(complete_message: bytes, state: tls_state, content_type):
+    complete_message += int(content_type.value).to_bytes(1, 'big')
 
     app_data = tls1_3.tls_plaintext.ContentType.APPLICATION_DATA
     legacy_record_version = ProtocolVersion.TLS_1_2
@@ -55,6 +56,30 @@ def create_handshake_ct(complete_message: bytes, state: tls_state):
 
     encrypted = state.encrypt_record(aad, complete_message)
     return aad + encrypted
+
+
+def create_handshake_ct(complete_message: bytes, state: tls_state):
+    handshake = tls1_3.tls_plaintext.ContentType.HANDSHAKE
+    return create_ct(complete_message, state, handshake)
+
+
+def send_application_ct(socket, complete_message: bytes, state: tls_state):
+    application = tls1_3.tls_plaintext.ContentType.APPLICATION_DATA
+    socket.sendall(create_ct(complete_message, state, application))
+
+
+def handle_app_data_from_ciphertext(complete_message: bytes, state: tls_state):
+    decrypted_message = state.decrypt_record(complete_message)
+    if decrypted_message[-1] == 0:
+        raise NotImplementedError("Padding not implemented")
+    else:
+        content_type = tls1_3.tls_plaintext.ContentType(
+            decrypted_message[-1])
+
+    if content_type != tls1_3.tls_plaintext.ContentType.APPLICATION_DATA:
+        raise Exception("Not application data")
+
+    print(decrypted_message[:-1].decode(), end='')
 
 
 def handle_typed_message(message: tls1_3.tls_handshake.Handshake, state: tls_state):

@@ -12,6 +12,7 @@ class TLSStep(Enum):
     CLIENT_HELLO_SENT = 2
     SERVER_HELLO_RECEIVED = 3
     SERVER_HANDSHAKE_FINISHED = 4
+    SETUP_FINISHED = 5
 
 
 class tls_state:
@@ -100,6 +101,8 @@ class tls_state:
     def decrypt_record(self, tls_ciphertext):
         if self.step == TLSStep.SERVER_HELLO_RECEIVED:
             key = self.keys.server_handshake_traffic_secret
+        if self.step == TLSStep.SETUP_FINISHED:
+            key = self.keys.server_application_traffic_secret
         decrypted = tls1_3.tls_crypto.decrypt_record(
             self.chosen_cipher_suite, key, self.decrypted_records, tls_ciphertext)
         self.decrypted_records += 1
@@ -108,7 +111,15 @@ class tls_state:
     def encrypt_record(self, aad, message):
         if self.step == TLSStep.SERVER_HANDSHAKE_FINISHED:
             key = self.keys.client_handshake_traffic_secret
+        if self.step == TLSStep.SETUP_FINISHED:
+            key = self.keys.client_application_traffic_secret
         encrypted = tls1_3.tls_crypto.encrypt_record(
             self.chosen_cipher_suite, key, self.encrypted_records, aad, message)
         self.encrypted_records += 1
         return encrypted
+
+    def finish_session_setup(self):
+        self.keys.derive_master_secret(self.transcript)
+        self.decrypted_records = 0
+        self.encrypted_records = 0
+        self.step = TLSStep.SETUP_FINISHED
