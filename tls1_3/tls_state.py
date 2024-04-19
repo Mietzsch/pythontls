@@ -23,6 +23,7 @@ class tls_state:
     chosen_cipher_suite: tls1_3.tls_constants.CipherSuite
     offered_versions: list[tls1_3.tls_constants.ProtocolVersion]
     chosen_version: tls1_3.tls_constants.ProtocolVersion
+    server_cert: bytes
     keyshares = dict()
     shared_secret = bytes()
     keys: tls1_3.tls_crypto.tls_key_schedule
@@ -76,6 +77,9 @@ class tls_state:
         self.shared_secret = tls1_3.tls_crypto.generate_shared_secret(
             group, own_share, other_share)
         self.keys.derive_handshake_secret(self.shared_secret, self.transcript)
+
+    def save_cert(self, certificate):
+        self.server_cert = certificate
 
     def decrypt_record(self, tls_ciphertext):
         if self.step == TLSStep.SERVER_HELLO_RECEIVED:

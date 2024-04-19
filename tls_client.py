@@ -3,7 +3,7 @@
 import sys
 import socket
 
-import tls1_3.client_hello
+import tls1_3.messages.client_hello
 import tls1_3.handshake_message_dispatcher
 import tls1_3.tls_state
 import tls1_3.tls_plaintext
@@ -31,12 +31,14 @@ def main() -> int:
     state = tls1_3.tls_state.tls_state()
     sock = create_socket(state)
 
-    tls1_3.client_hello.send_client_hello(sock, state)
+    tls1_3.messages.client_hello.send_client_hello(sock, state)
     message = receive_message(sock)  # server hello
     tls1_3.handshake_message_dispatcher.handle_from_plaintext(message, state)
     message = receive_message(sock)  # encrypted extensions
     tls1_3.handshake_message_dispatcher.handle_from_ciphertext(message, state)
     message = receive_message(sock)  # server certificate
+    tls1_3.handshake_message_dispatcher.handle_from_ciphertext(message, state)
+    message = receive_message(sock)  # certificate verify
     tls1_3.handshake_message_dispatcher.handle_from_ciphertext(message, state)
 
     print("closing socket")

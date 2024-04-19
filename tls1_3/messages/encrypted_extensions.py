@@ -1,4 +1,4 @@
-# encrypted_extensions
+# encrypted_extensions.py
 
 import tls1_3.tls_constants
 import tls1_3.tls_state
