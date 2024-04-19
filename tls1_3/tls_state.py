@@ -23,6 +23,7 @@ class tls_state:
     chosen_cipher_suite: tls1_3.tls_constants.CipherSuite
     offered_versions: list[tls1_3.tls_constants.ProtocolVersion]
     chosen_version: tls1_3.tls_constants.ProtocolVersion
+    offered_sig_schemes: list[tls1_3.tls_constants.SignatureScheme]
     server_cert: bytes
     keyshares = dict()
     shared_secret = bytes()
@@ -80,6 +81,11 @@ class tls_state:
 
     def save_cert(self, certificate):
         self.server_cert = certificate
+
+    def verify_sig(self, scheme, signature):
+        if self.offered_sig_schemes.count(scheme) != 1:
+            raise Exception("Chosen signature scheme was not offered")
+        print("Skipping signature verification")
 
     def decrypt_record(self, tls_ciphertext):
         if self.step == TLSStep.SERVER_HELLO_RECEIVED:

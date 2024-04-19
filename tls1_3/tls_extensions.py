@@ -84,7 +84,7 @@ class SignatureAlgorithmsExtension(Extension):
         return out
 
     def update_state(self, state: tls1_3.tls_state.tls_state):
-        pass
+        state.offered_sig_schemes = self.supported_algos
 
 
 class SupportedGroupsExtension(Extension):
