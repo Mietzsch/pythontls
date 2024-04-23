@@ -90,7 +90,8 @@ class tls_state:
     def verify_sig(self, scheme, signature):
         if self.offered_sig_schemes.count(scheme) != 1:
             raise Exception("Chosen signature scheme was not offered")
-        print("Skipping signature verification")
+        tls1_3.tls_crypto.check_signature(
+            self.chosen_cipher_suite, scheme, self.transcript, self.server_cert, signature)
 
     def verify_finished(self, verify_data):
         self.keys.verify_server_finished(verify_data, self.transcript)

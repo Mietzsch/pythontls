@@ -8,6 +8,7 @@ from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives import hmac
 from cryptography.hazmat.primitives.ciphers.aead import (
     ChaCha20Poly1305, AESGCM)
+from cryptography import x509
 
 
 import tls1_3.tls_constants
@@ -177,6 +178,37 @@ def derive_secret(hash: hashes.HashAlgorithm, secret: bytes, label: str, transcr
     return hkdf_expand_label(hash, secret, label, transcript_hash, hash.digest_size)
 
 
+def check_signature(cipher_suite, scheme, transcript, certificate, signature):
+    match cipher_suite:
+        case tls1_3.tls_constants.CipherSuite.TLS_AES_128_GCM_SHA256:
+            hash = hashes.Hash(hashes.SHA256())
+        case tls1_3.tls_constants.CipherSuite.TLS_AES_256_GCM_SHA384:
+            hash = hashes.Hash(hashes.SHA384())
+        case tls1_3.tls_constants.CipherSuite.TLS_CHACHA20_POLY1305_SHA256:
+            hash = hashes.Hash(hashes.SHA256())
+
+    match scheme:
+        case tls1_3.tls_constants.SignatureScheme.ECDSA_SECP256R1_SHA256:
+            sig_hash = hashes.SHA256()
+        case tls1_3.tls_constants.SignatureScheme.ECDSA_SECP384R1_SHA384:
+            sig_hash = hashes.SHA384()
+        case tls1_3.tls_constants.SignatureScheme.ECDSA_SECP521R1_SHA512:
+            sig_hash = hashes.SHA512()
+
+    for code, message in transcript.items():
+        hash.update(message)
+    transcript_hash = hash.finalize()
+
+    content = bytes(b'\x20')*64
+    content += "TLS 1.3, server CertificateVerify".encode()
+    content += b'\x00'
+    content += transcript_hash
+
+    cert = x509.load_der_x509_certificate(certificate)
+    pk = cert.public_key()
+    pk.verify(signature, content, ec.ECDSA(sig_hash))
+
+
 class tls_key_schedule:
     hash: hashes.HashAlgorithm
     early_secret: bytes
@@ -191,7 +223,6 @@ class tls_key_schedule:
         match cipher_suite:
             case tls1_3.tls_constants.CipherSuite.TLS_AES_128_GCM_SHA256:
                 self.hash = hashes.SHA256()
-                self.hash
             case tls1_3.tls_constants.CipherSuite.TLS_AES_256_GCM_SHA384:
                 self.hash = hashes.SHA384()
             case tls1_3.tls_constants.CipherSuite.TLS_CHACHA20_POLY1305_SHA256:
