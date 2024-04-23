@@ -26,7 +26,7 @@ def handle_from_plaintext(complete_message: bytes, state: tls_state):
     handle_typed_message(handshake_message, state)
 
 
-def handle_handshake_from_ciphertext(complete_message: bytes, state: tls_state):
+def handle_from_ciphertext(complete_message: bytes, state: tls_state):
     decrypted_message = state.decrypt_record(complete_message)
     if decrypted_message[-1] == 0:
         raise NotImplementedError("Padding not implemented")
@@ -34,14 +34,23 @@ def handle_handshake_from_ciphertext(complete_message: bytes, state: tls_state):
         content_type = tls1_3.tls_plaintext.ContentType(
             decrypted_message[-1])
 
-    if content_type != tls1_3.tls_plaintext.ContentType.HANDSHAKE:
-        raise Exception("Not a Handshake Protocol")
+    plain_message = decrypted_message[:-1]
+    match content_type:
+        case tls1_3.tls_plaintext.ContentType.HANDSHAKE:
+            handle_handshake(plain_message, state)
+        case tls1_3.tls_plaintext.ContentType.APPLICATION_DATA:
+            handle_app_data(plain_message)
 
+
+def handle_handshake(plain_message, state):
     handshake_message = tls1_3.tls_handshake.Handshake.fromSerializedMessage(
-        decrypted_message[:-1])
-
+        plain_message)
     handle_typed_message(handshake_message, state)
-    state.save_message(handshake_message.type, decrypted_message[:-1])
+    state.save_message(handshake_message.type, plain_message)
+
+
+def handle_app_data(plain_message):
+    print(plain_message.decode(), end='')
 
 
 def create_ct(complete_message: bytes, state: tls_state, content_type):
@@ -66,20 +75,6 @@ def create_handshake_ct(complete_message: bytes, state: tls_state):
 def send_application_ct(socket, complete_message: bytes, state: tls_state):
     application = tls1_3.tls_plaintext.ContentType.APPLICATION_DATA
     socket.sendall(create_ct(complete_message, state, application))
-
-
-def handle_app_data_from_ciphertext(complete_message: bytes, state: tls_state):
-    decrypted_message = state.decrypt_record(complete_message)
-    if decrypted_message[-1] == 0:
-        raise NotImplementedError("Padding not implemented")
-    else:
-        content_type = tls1_3.tls_plaintext.ContentType(
-            decrypted_message[-1])
-
-    if content_type != tls1_3.tls_plaintext.ContentType.APPLICATION_DATA:
-        raise Exception("Not application data")
-
-    print(decrypted_message[:-1].decode(), end='')
 
 
 def handle_typed_message(message: tls1_3.tls_handshake.Handshake, state: tls_state):

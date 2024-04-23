@@ -44,7 +44,7 @@ def main() -> int:
     # finished
     while state.step != tls1_3.tls_state.TLSStep.SERVER_HANDSHAKE_FINISHED:
         message = receive_message(sock)
-        tls1_3.message_dispatcher.handle_handshake_from_ciphertext(
+        tls1_3.message_dispatcher.handle_from_ciphertext(
             message, state)
 
     tls1_3.messages.client_finished.send_client_finished(sock, state)
@@ -56,7 +56,7 @@ def main() -> int:
     print("ping")
     message = receive_message(sock)
     print("Got:")
-    tls1_3.message_dispatcher.handle_app_data_from_ciphertext(
+    tls1_3.message_dispatcher.handle_from_ciphertext(
         message, state)
 
     print("closing socket")
