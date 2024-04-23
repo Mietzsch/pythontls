@@ -3,6 +3,7 @@
 import sys
 import socket
 
+
 import tls1_3.messages.client_hello
 import tls1_3.messages.client_finished
 import tls1_3.message_dispatcher
@@ -59,7 +60,13 @@ def main() -> int:
     tls1_3.message_dispatcher.handle_from_ciphertext(
         message, state)
 
-    print("closing socket")
+    print("Closing socket")
+    tls1_3.message_dispatcher.close_connection(
+        sock, state)
+
+    message = receive_message(sock)
+    tls1_3.message_dispatcher.handle_from_ciphertext(
+        message, state)
     sock.close()
     return 0
 

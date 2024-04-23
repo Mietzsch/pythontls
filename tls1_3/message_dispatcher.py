@@ -2,6 +2,8 @@
 
 import socket
 
+from tls1_3.tls_alert import AlertLevel, AlertDescription
+import tls1_3.tls_alert
 import tls1_3.tls_plaintext
 import tls1_3.tls_handshake
 from tls1_3.tls_constants import HandshakeCode, ProtocolVersion
@@ -40,6 +42,10 @@ def handle_from_ciphertext(complete_message: bytes, state: tls_state):
             handle_handshake(plain_message, state)
         case tls1_3.tls_plaintext.ContentType.APPLICATION_DATA:
             handle_app_data(plain_message)
+        case tls1_3.tls_plaintext.ContentType.ALERT:
+            handle_alert(plain_message)
+        case _:
+            raise Exception("Message type unkown")
 
 
 def handle_handshake(plain_message, state):
@@ -51,6 +57,12 @@ def handle_handshake(plain_message, state):
 
 def handle_app_data(plain_message):
     print(plain_message.decode(), end='')
+
+
+def handle_alert(plain_message):
+    alert = tls1_3.tls_alert.Alert.fromSerializedMessage(plain_message)
+    print("Got Alert, level: " + str(alert.level) + ", desciption: " +
+          str(alert.description))
 
 
 def create_ct(complete_message: bytes, state: tls_state, content_type):
@@ -75,6 +87,13 @@ def create_handshake_ct(complete_message: bytes, state: tls_state):
 def send_application_ct(socket, complete_message: bytes, state: tls_state):
     application = tls1_3.tls_plaintext.ContentType.APPLICATION_DATA
     socket.sendall(create_ct(complete_message, state, application))
+
+
+def close_connection(socket, state):
+    alert = tls1_3.tls_alert.Alert(
+        AlertLevel.WARNING, AlertDescription.CLOSE_NOTIFY)
+    socket.sendall(create_ct(alert.serialize(), state,
+                   tls1_3.tls_plaintext.ContentType.ALERT))
 
 
 def handle_typed_message(message: tls1_3.tls_handshake.Handshake, state: tls_state):
