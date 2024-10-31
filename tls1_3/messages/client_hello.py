@@ -72,7 +72,8 @@ def create_default_extensions(state: tls1_3.tls_state.tls_state) -> list[tls1_3.
     out = [supported_versions]
 
     supported_algos = tls1_3.tls_extensions.SignatureAlgorithmsExtension(
-        [tls1_3.tls_constants.SignatureScheme.ECDSA_SECP384R1_SHA384]
+        [tls1_3.tls_constants.SignatureScheme.ECDSA_SECP384R1_SHA384,
+         tls1_3.tls_constants.SignatureScheme.RSA_PSS_RSAE_SHA256]
     )
     out.append(supported_algos)
 

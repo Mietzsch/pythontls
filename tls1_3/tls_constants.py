@@ -34,9 +34,12 @@ class ProtocolVersion(IntEnum):
 
 
 class SignatureScheme(IntEnum):
+    RSA_PKCS1_SHA256 = 0x0401,
     ECDSA_SECP256R1_SHA256 = 0x0403,
     ECDSA_SECP384R1_SHA384 = 0x0503,
     ECDSA_SECP521R1_SHA512 = 0x0603,
+    RSA_PSS_RSAE_SHA256 = 0x0804
+    RSA_PSS_PSS_SHA256 = 0x0809,
 
 
 class HandshakeCode(IntEnum):
