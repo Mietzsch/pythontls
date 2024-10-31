@@ -16,10 +16,10 @@ class TLSStep(Enum):
 
 
 class tls_state:
-    # hostname = '142.251.36.238'
-    # port = 443
-    hostname = 'localhost'
-    port = 44330
+    hostname = '142.251.36.238'
+    port = 443
+    # hostname = 'localhost'
+    # port = 44330
     step = TLSStep.CLIENT_HELLO
     legacy_session_id: bytes
     transcript = dict()

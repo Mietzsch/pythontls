@@ -24,9 +24,9 @@ class certificate(tls1_3.tls_handshake.HandshakeMessage):
             ptr += 3
             if (cert_len > 0):
                 cert_count += 1
-                if (cert_count > 1):
-                    raise NotImplementedError("Only one cert implemented")
-                self.certificate = serialized_message[ptr:ptr+cert_len]
+                if (cert_count == 1):
+                    # we only want to get the ee cert which is first
+                    self.certificate = serialized_message[ptr:ptr+cert_len]
             ptr += cert_len
             extn_len = int.from_bytes(
                 serialized_message[ptr:ptr+2], 'big')

@@ -8,6 +8,7 @@ import tls1_3.tls_state
 
 
 class ExtensionCode(IntEnum):
+    SERVER_NAME = 0,
     SUPPORTED_GROUPS = 10,
     SIGNATURE_ALOGRITHMS = 13,
     SUPPORTED_VERSIONS = 43,
@@ -101,6 +102,31 @@ class SupportedGroupsExtension(Extension):
         out = total_len.to_bytes(2, 'big')
         for group in self.supported_groups:
             out += int(group.value).to_bytes(2, 'big')
+        return out
+
+    def update_state(self, state: tls1_3.tls_state.tls_state):
+        pass
+
+
+class ServerNameIndicationExtension(Extension):
+    hostnames = [str]
+
+    def __init__(self, hostnames):
+        self.hostnames = hostnames
+
+    def getType(self) -> ExtensionCode:
+        return ExtensionCode.SERVER_NAME
+
+    def serialize(self) -> bytes:
+        total_hosts = bytes()
+        for host in self.hostnames:
+            host_encoded = host.encode()
+            total_hosts += int(0).to_bytes(1, 'big')
+            total_hosts += len(host_encoded).to_bytes(2, 'big')
+            total_hosts += host_encoded
+        total_len = len(total_hosts)
+        out = total_len.to_bytes(2, 'big')
+        out += total_hosts
         return out
 
     def update_state(self, state: tls1_3.tls_state.tls_state):

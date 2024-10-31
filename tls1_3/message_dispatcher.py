@@ -49,10 +49,16 @@ def handle_from_ciphertext(complete_message: bytes, state: tls_state):
 
 
 def handle_handshake(plain_message, state):
-    handshake_message = tls1_3.tls_handshake.Handshake.fromSerializedMessage(
-        plain_message)
-    handle_typed_message(handshake_message, state)
-    state.save_message(handshake_message.type, plain_message)
+    offset = 0
+    while offset < len(plain_message):
+        fragment_len = int.from_bytes(
+            plain_message[offset+1:offset+4], 'big') + 4
+        handshake_message = tls1_3.tls_handshake.Handshake.fromSerializedMessage(
+            plain_message[offset:offset+fragment_len])
+        handle_typed_message(handshake_message, state)
+        state.save_message(handshake_message.type,
+                           plain_message[offset:offset+fragment_len])
+        offset += fragment_len
 
 
 def handle_app_data(plain_message):
@@ -97,6 +103,7 @@ def close_connection(socket, state):
 
 
 def handle_typed_message(message: tls1_3.tls_handshake.Handshake, state: tls_state):
+    print("  Handle " + message.type.name)
     match message.type:
         case HandshakeCode.SERVER_HELLO:
             typed_server_hello = server_hello(message.msg)

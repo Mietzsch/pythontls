@@ -63,17 +63,27 @@ class client_hello(tls1_3.tls_handshake.HandshakeMessage):
 
 
 def create_default_cipher_suites() -> list[tls1_3.tls_constants.CipherSuite]:
-    return [tls1_3.tls_constants.CipherSuite.TLS_AES_256_GCM_SHA384, tls1_3.tls_constants.CipherSuite.TLS_AES_128_GCM_SHA256]
+    return [tls1_3.tls_constants.CipherSuite.TLS_AES_256_GCM_SHA384,
+            tls1_3.tls_constants.CipherSuite.TLS_AES_128_GCM_SHA256
+            ]
 
 
 def create_default_extensions(state: tls1_3.tls_state.tls_state) -> list[tls1_3.tls_extensions.ExtensionMessage]:
+    out = []
+
+    server_name = tls1_3.tls_extensions.ServerNameIndicationExtension([
+                                                                      'google.com'])
+    out.append(server_name)
+
     supported_versions = tls1_3.tls_extensions.SupportedVersionsExtension(
         [tls1_3.tls_constants.ProtocolVersion.TLS_1_3])
-    out = [supported_versions]
+    out.append(supported_versions)
 
     supported_algos = tls1_3.tls_extensions.SignatureAlgorithmsExtension(
-        [tls1_3.tls_constants.SignatureScheme.ECDSA_SECP384R1_SHA384,
-         tls1_3.tls_constants.SignatureScheme.RSA_PSS_RSAE_SHA256]
+        [tls1_3.tls_constants.SignatureScheme.ECDSA_SECP256R1_SHA256,
+            tls1_3.tls_constants.SignatureScheme.ECDSA_SECP384R1_SHA384,
+            tls1_3.tls_constants.SignatureScheme.RSA_PSS_RSAE_SHA256
+         ]
     )
     out.append(supported_algos)
 

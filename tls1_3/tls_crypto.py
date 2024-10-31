@@ -1,8 +1,9 @@
 # tls_crypto.py
 
-from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric import (ec, rsa)
 from cryptography.hazmat.primitives.asymmetric import x25519
 from cryptography.hazmat.primitives.asymmetric import x448
+from cryptography.hazmat.primitives.asymmetric import padding
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives import hmac
@@ -190,6 +191,8 @@ def check_signature(cipher_suite, scheme, transcript, certificate, signature):
     match scheme:
         case tls1_3.tls_constants.SignatureScheme.ECDSA_SECP256R1_SHA256:
             sig_hash = hashes.SHA256()
+        case tls1_3.tls_constants.SignatureScheme.RSA_PSS_RSAE_SHA256:
+            sig_hash = hashes.SHA256()
         case tls1_3.tls_constants.SignatureScheme.ECDSA_SECP384R1_SHA384:
             sig_hash = hashes.SHA384()
         case tls1_3.tls_constants.SignatureScheme.ECDSA_SECP521R1_SHA512:
@@ -206,7 +209,16 @@ def check_signature(cipher_suite, scheme, transcript, certificate, signature):
 
     cert = x509.load_der_x509_certificate(certificate)
     pk = cert.public_key()
-    pk.verify(signature, content, ec.ECDSA(sig_hash))
+    match scheme:
+        case tls1_3.tls_constants.SignatureScheme.ECDSA_SECP256R1_SHA256:
+            pk.verify(signature, content, ec.ECDSA(sig_hash))
+        case tls1_3.tls_constants.SignatureScheme.RSA_PSS_RSAE_SHA256:
+            pk.verify(signature, content, padding.PSS(
+                mgf=padding.MGF1(sig_hash), salt_length=padding.PSS.DIGEST_LENGTH), sig_hash)
+        case tls1_3.tls_constants.SignatureScheme.ECDSA_SECP384R1_SHA384:
+            pk.verify(signature, content, ec.ECDSA(sig_hash))
+        case tls1_3.tls_constants.SignatureScheme.ECDSA_SECP521R1_SHA512:
+            pk.verify(signature, content, ec.ECDSA(sig_hash))
 
 
 class tls_key_schedule:
