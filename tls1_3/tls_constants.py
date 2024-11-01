@@ -23,7 +23,8 @@ class NamedGroup(IntEnum):
     SECP384R1 = 0x0018,
     SECP521R1 = 0x0019,
     X25519 = 0x001D,
-    X448 = 0x001E
+    X448 = 0x001E,
+    X25519MLKEM768 = 0x11EC
 
 
 class ProtocolVersion(IntEnum):

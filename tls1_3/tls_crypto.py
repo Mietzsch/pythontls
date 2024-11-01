@@ -11,7 +11,13 @@ from cryptography.hazmat.primitives.ciphers.aead import (
     ChaCha20Poly1305, AESGCM)
 from cryptography import x509
 
+import tls1_3.kyber_py
+import tls1_3.kyber_py.src
+from tls1_3.kyber_py.src.kyber_py import *
 
+
+import tls1_3.kyber_py.src.kyber_py
+import tls1_3.kyber_py.src.kyber_py.ml_kem
 import tls1_3.tls_constants
 
 
@@ -60,6 +66,18 @@ def generate_key_share(group: tls1_3.tls_constants.NamedGroup) -> tuple[bytes, b
                 serialization.Encoding.Raw, serialization.PrivateFormat.Raw, serialization.NoEncryption())
             pk = sk.public_key()
             return [out_sk, pk.public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)]
+        case tls1_3.tls_constants.NamedGroup.X25519MLKEM768:
+            ml_kem_pk, ml_kem_sk = tls1_3.kyber_py.src.kyber_py.ml_kem.ML_KEM_768.keygen()
+
+            ec_sk = x25519.X25519PrivateKey.generate()
+            ec_sk_bytes = ec_sk.private_bytes(
+                serialization.Encoding.Raw, serialization.PrivateFormat.Raw, serialization.NoEncryption())
+            ec_pk = ec_sk.public_key()
+            ec_pk_bytes = ec_pk.public_bytes(
+                serialization.Encoding.Raw, serialization.PublicFormat.Raw)
+            out_complete_pk = ml_kem_pk + ec_pk_bytes
+            out_complete_sk = ml_kem_sk + ec_sk_bytes
+            return [out_complete_sk, out_complete_pk]
 
 
 def generate_shared_secret(group: tls1_3.tls_constants.NamedGroup, own_secret: bytes, foreign_secret: bytes) -> bytes:
@@ -70,6 +88,21 @@ def generate_shared_secret(group: tls1_3.tls_constants.NamedGroup, own_secret: b
                 foreign_secret)
             ss = sk.exchange(foreign_pk)
             return ss
+        case tls1_3.tls_constants.NamedGroup.X25519MLKEM768:
+            ml_kem_sk_bytes = own_secret[:-32]
+            ec_sk_bytes = own_secret[-32:]
+
+            ml_kem_foreign_pk_bytes = foreign_secret[:-32]
+            ec_foreign_pk_bytes = foreign_secret[-32:]
+
+            ml_kem_ss = tls1_3.kyber_py.src.kyber_py.ml_kem.ML_KEM_768.decaps(
+                ml_kem_sk_bytes, ml_kem_foreign_pk_bytes)
+
+            ec_sk = x25519.X25519PrivateKey.from_private_bytes(ec_sk_bytes)
+            ec_foreign_pk = x25519.X25519PublicKey.from_public_bytes(
+                ec_foreign_pk_bytes)
+            ec_ss = ec_sk.exchange(ec_foreign_pk)
+            return ml_kem_ss + ec_ss
 
 
 def decrypt_record(suite: tls1_3.tls_constants.CipherSuite, key: bytes, record_no: int, messsage: bytes):

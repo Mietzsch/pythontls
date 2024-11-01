@@ -87,7 +87,7 @@ def create_default_extensions(state: tls1_3.tls_state.tls_state) -> list[tls1_3.
     )
     out.append(supported_algos)
 
-    groups = [tls1_3.tls_constants.NamedGroup.X25519]
+    groups = [tls1_3.tls_constants.NamedGroup.X25519MLKEM768]
 
     supported_groups = tls1_3.tls_extensions.SupportedGroupsExtension(
         groups)
